@@ -8,6 +8,25 @@ import scipy.ndimage
 import numpy as np
 import matplotlib.pyplot as plt
 
+def compute_energy(unary, pairwise, label):
+    # compute the labeling energy.
+
+    # unary energy
+    energy = unary[:, :, label].sum()
+
+    # pairwise energy
+    H, W, N_DISP = unary.shape
+    pairwise_count = np.zeros((N_DISP, N_DISP), np.int32)
+    for y in range(H):
+        for x in range(W):
+            l = label[y, x]
+            if y > 0: pairwise_count[l, int(label[y - 1, x])] += 1
+            if x > 0: pairwise_count[l, int(label[y, x - 1])] += 1
+    energy += (pairwise * pairwise_count).sum()
+
+    return energy
+
+
 def solve_local(unary, pairwise):
     # local argmin energy. no pairwise term.
     H, W, N_DISP = unary.shape
@@ -105,7 +124,7 @@ def trw_s_2d_stereo():
     BASE_DISP = 9
     N_DISP = 9
     STEP_SIZE = 2
-    WINDOW_SIZE = 3
+    WINDOW_SIZE = 1
     if args.shrink > 1:
         imL = scipy.ndimage.zoom(imL, 1.0/args.shrink)
         imR = scipy.ndimage.zoom(imR, 1.0/args.shrink)
@@ -175,6 +194,8 @@ def trw_s_2d_stereo():
     if args.method == 'TRW-S':
         print('method: TRW-S')
         disp = solve_trw_s(unary, pairwise)
+
+    print('energy = {}'.format(compute_energy(unary, pairwise, disp)))
 
     fig, ax = plt.subplots(1, 1)
     ax.imshow(disp)
